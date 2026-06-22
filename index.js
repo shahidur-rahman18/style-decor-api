@@ -19,7 +19,7 @@ app.use(
   cors({
     origin: [
       process.env.CLIENT_DOMAIN?.trim(),
-      "https://style-decor-client-self.vercel.app",
+      "https://style-decor-indol.vercel.app",
       "http://localhost:5173",
     ].filter(Boolean),
     credentials: true,
