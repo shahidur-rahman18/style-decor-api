@@ -18,10 +18,10 @@ const app = express();
 app.use(
   cors({
     origin: [
-      process.env.CLIENT_DOMAIN,
+      process.env.CLIENT_DOMAIN?.trim(),
       "https://style-decor-client-self.vercel.app",
       "http://localhost:5173",
-    ],
+    ].filter(Boolean),
     credentials: true,
     optionSuccessStatus: 200,
   })
@@ -54,6 +54,12 @@ const client = new MongoClient(process.env.MONGODB_URI, {
 });
 async function run() {
   try {
+    await client.connect();
+
+    app.get("/", (req, res) => {
+      res.send("Hello from Server..");
+    });
+
     const db = client.db("styleDecorDB");
     const servicesCollection = db.collection("services");
     const ordersCollection = db.collection("orders");
@@ -373,12 +379,26 @@ async function run() {
     // Ensures that the client will close when you finish/error
   }
 }
-run().catch(console.dir);
-
-app.get("/", (req, res) => {
-  res.send("Hello from Server..");
+const initPromise = run().catch((err) => {
+  console.error("Failed to initialize server:", err);
+  throw err;
 });
 
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+app.use(async (req, res, next) => {
+  try {
+    await initPromise;
+    next();
+  } catch (err) {
+    res.status(503).send({ message: "Service temporarily unavailable" });
+  }
 });
+
+module.exports = app;
+
+if (!process.env.VERCEL) {
+  initPromise.then(() => {
+    app.listen(port, () => {
+      console.log(`Server is running on port ${port}`);
+    });
+  });
+}
